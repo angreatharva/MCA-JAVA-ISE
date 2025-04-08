@@ -9,28 +9,46 @@ import java.util.List;
 
 public class UserDao {
 
-    public static boolean registerUser(String name, String email, String password) {
-        System.out.println("Attempting to register user: " + email);
-        String sql = "INSERT INTO users (name, email, password) VALUES (?, ?, ?)";
+    public static User loginUser(String email, String password, String role) {
+        User user = null;
+        try (Connection conn = DBConnection.getConnection()) {
+            String sql = "SELECT * FROM users WHERE email = ? AND password = ? AND role = ?";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setString(1, email);
+            stmt.setString(2, password);
+            stmt.setString(3, role);
+
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                user = new User();
+                user.setName(rs.getString("name"));
+                user.setEmail(email);
+                user.setPassword(password);
+                user.setRole(role);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return user;
+    }
+
+    public static boolean registerUser(String name, String email, String password, String role) {
+        String sql = "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)";
 
         try (Connection conn = DBConnection.getConnection()) {
-            if (conn == null) {
-                System.out.println("Connection is null, cannot register user");
-                return false;
-            }
+            if (conn == null) return false;
 
             PreparedStatement pstmt = conn.prepareStatement(sql);
             pstmt.setString(1, name);
             pstmt.setString(2, email);
-            pstmt.setString(3, password);  // In a real app, you should hash this password
+            pstmt.setString(3, password);
+            pstmt.setString(4, role);
 
             int rowsAffected = pstmt.executeUpdate();
-            System.out.println("User registration result, rows affected: " + rowsAffected);
             pstmt.close();
             return rowsAffected > 0;
 
         } catch (SQLException e) {
-            System.out.println("SQL Error during registration: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -68,8 +86,8 @@ public class UserDao {
         return users;
     }
 
-    public static boolean updateUser(String oldEmail, String newName, String newEmail) {
-        String sql = "UPDATE users SET name = ?, email = ? WHERE email = ?";
+    public static boolean updateUser(String oldEmail, String newName, String newEmail, String newRole) {
+        String sql = "UPDATE users SET name = ?, email = ?, role = ? WHERE email = ?";
 
         try (Connection conn = DBConnection.getConnection()) {
             if (conn == null) {
@@ -80,7 +98,8 @@ public class UserDao {
             PreparedStatement pstmt = conn.prepareStatement(sql);
             pstmt.setString(1, newName);
             pstmt.setString(2, newEmail);
-            pstmt.setString(3, oldEmail);
+            pstmt.setString(3, newRole);
+            pstmt.setString(4, oldEmail);
 
             int rowsAffected = pstmt.executeUpdate();
             pstmt.close();
